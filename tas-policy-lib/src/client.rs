@@ -173,44 +173,6 @@ impl TasClient {
         ))
     }
 
-    /// Update an existing policy (replaces entirely).
-    ///
-    /// This a really a convince function as there is no separate update endpoint in the TAS API.
-    /// It checks that a policy with the same key_id exists on the server,
-    /// then builds and signs the envelope and POSTs to the same `POST /policy/v0/store` endpoint
-    /// which will replace the existing policy.
-    pub fn update_policy<P: Into<Policy>>(
-        &self,
-        policy_key: &str,
-        policy: P,
-        signing_key: &SigningKey,
-    ) -> Result<ApiResponse<UpdateResult>> {
-        let policy = policy.into();
-
-        // Check if policy with the same key_id exists on the server
-        let existing_policy = self.get_policy(policy_key);
-        if existing_policy.is_err() {
-            return Err(Error::NotFound(format!(
-                "Policy with key_id '{}' does not exist for update",
-                policy_key
-            )));
-        }
-
-        // Policy exists, proceed with update by building and signing the envelope
-
-        let mut envelope = Self::build_envelope(&policy)?;
-        sign_envelope(signing_key, &mut envelope)?;
-
-        let (_body, deprecation) = self.post("/policy/v0/store", &envelope)?;
-
-        Ok(ApiResponse::new(
-            UpdateResult {
-                policy_key: policy_key.to_string(),
-            },
-            Some(deprecation),
-        ))
-    }
-
     /// Delete a policy by key.
     ///
     /// Checks that the policy exists, then sends `DELETE /policy/v0/delete/{policy_key}`.
@@ -591,12 +553,6 @@ impl<T> ApiResponse<T> {
 pub struct CreateResult {
     pub policy_key: String,
     pub cvm_type: crate::policy::CvmType,
-}
-
-/// Result of a successful policy update.
-#[derive(Debug, Clone)]
-pub struct UpdateResult {
-    pub policy_key: String,
 }
 
 /// Summary of a policy for list operations.

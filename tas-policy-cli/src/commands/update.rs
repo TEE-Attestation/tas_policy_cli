@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 //
 // This module provides the update command for modifying existing TAS policies.
+// Since TAS policies cannot be overwritten, an update deletes the existing
+// policy and then creates a new one with the merged changes.
 
 use crate::args::{GlobalOpts, UpdateArgs};
 use crate::convert;
@@ -19,7 +21,7 @@ use zeroize::Zeroize;
 /// 4. Convert CLI overrides to the appropriate overrides struct.
 /// 5. Merge overrides into the policy (validates measurement hex, etc.).
 /// 6. If `--dry-run`, print the merged policy and exit.
-/// 7. Otherwise, sign and upload the updated policy.
+/// 7. Otherwise, delete the existing policy and create a new one.
 pub fn execute(args: UpdateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
     let client = convert::build_client(global)?;
 
@@ -95,10 +97,22 @@ pub fn execute(args: UpdateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Upload updated policy
-    let result = client
-        .update_policy(&args.policy_key, policy, &signing_key)
-        .map_err(|e| anyhow::anyhow!("Failed to update policy: {}", e))?;
+    // Delete the existing policy
+    info!("Deleting existing policy '{}'...", args.policy_key);
+    client
+        .delete_policy(&args.policy_key)
+        .map_err(|e| anyhow::anyhow!("Failed to delete policy '{}': {}", args.policy_key, e))?;
+
+    // Create the updated policy
+    info!("Creating updated policy '{}'...", args.policy_key);
+    let result = match policy {
+        Policy::Tdx(tdx) => client
+            .create_policy(tdx, &signing_key)
+            .map_err(|e| anyhow::anyhow!("Failed to create updated policy: {}", e))?,
+        Policy::Sev(sev) => client
+            .create_policy(sev, &signing_key)
+            .map_err(|e| anyhow::anyhow!("Failed to create updated policy: {}", e))?,
+    };
 
     crate::output::maybe_show_deprecation(&result, global.verbose);
     println!("Policy '{}' updated successfully.", result.data.policy_key);

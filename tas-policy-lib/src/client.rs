@@ -17,6 +17,9 @@ use crate::signing::{SigningKey, sign_envelope};
 //use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 
+/// Base path for the TAS management policy API.
+const POLICY_API_BASE: &str = "/management/policy/v0";
+
 /// TAS API client for policy operations.
 pub struct TasClient {
     host: String,
@@ -137,7 +140,7 @@ impl TasClient {
     /// Create and upload a new policy.
     ///
     /// Builds the signed envelope (RSA-SHA384-PSS over canonical validation_rules),
-    /// then POSTs it to `POST /policy/v0/store`.
+    /// then POSTs it to `POST /management/policy/v0/store`.
     ///
     /// # Upcoming Tasks
     /// * Investigate if CIPHERTEXT_HIDING_DRAM can be set to true for SEV, whne Ubuntu 26.04 arrives, and update the SEV policy builder accordingly.
@@ -158,7 +161,7 @@ impl TasClient {
         let mut envelope = Self::build_envelope(&policy)?;
         sign_envelope(signing_key, &mut envelope)?;
 
-        let (_body, deprecation) = self.post("/policy/v0/store", &envelope)?;
+        let (_body, deprecation) = self.post(&format!("{}/store", POLICY_API_BASE), &envelope)?;
 
         Ok(ApiResponse::new(
             CreateResult {
@@ -175,24 +178,24 @@ impl TasClient {
 
     /// Delete a policy by key.
     ///
-    /// Checks that the policy exists, then sends `DELETE /policy/v0/delete/{policy_key}`.
+    /// Checks that the policy exists, then sends `DELETE /management/policy/v0/delete/{policy_key}`.
     pub fn delete_policy(&self, policy_key: &str) -> Result<ApiResponse<()>> {
         self.get_policy(policy_key)
             .map_err(|_| Error::NotFound(format!("policy '{}' does not exist", policy_key)))?;
-        let path = format!("/policy/v0/delete/{}", policy_key);
+        let path = format!("{}/delete/{}", POLICY_API_BASE, policy_key);
         let (_body, deprecation) = self.delete_request(&path)?;
         Ok(ApiResponse::new((), Some(deprecation)))
     }
 
     /// List all policies, optionally filtered.
     ///
-    /// Sends `GET /policy/v0/list`. The API returns all policies;
+    /// Sends `GET /management/policy/v0/list`. The API returns all policies;
     /// client-side filtering is applied when a `ListFilter` is provided.
     pub fn list_policies(
         &self,
         filter: Option<ListFilter>,
     ) -> Result<ApiResponse<Vec<PolicySummary>>> {
-        let (response, deprecation) = self.get("/policy/v0/list")?;
+        let (response, deprecation) = self.get(&format!("{}/list", POLICY_API_BASE))?;
         let wrapper: ListResponse = serde_json::from_str(&response)?;
         let mut summaries = wrapper.policies;
 
@@ -205,11 +208,11 @@ impl TasClient {
 
     /// Get a specific policy by key.
     ///
-    /// Sends `GET /policy/v0/get/{policy_key}`.
+    /// Sends `GET /management/policy/v0/get/{policy_key}`.
     /// The server returns a JSON object with `policy_key` and `policy` fields.
     /// The CVM type is extracted from the `policy_key` (e.g. `"policy:TDX:my-id"`).
     pub fn get_policy(&self, policy_key: &str) -> Result<ApiResponse<GetPolicyResponse>> {
-        let path = format!("/policy/v0/get/{}", policy_key);
+        let path = format!("{}/get/{}", POLICY_API_BASE, policy_key);
         let (response, deprecation) = self.get(&path)?;
         let get_resp: GetPolicyResponse = serde_json::from_str(&response)?;
         Ok(ApiResponse::new(get_resp, Some(deprecation)))
@@ -557,7 +560,7 @@ pub struct CreateResult {
 
 /// Summary of a policy for list operations.
 ///
-/// Matches the shape returned by `GET /policy/v0/list`:
+/// Matches the shape returned by `GET /management/policy/v0/list`:
 /// ```json
 /// { "policy_key": "...", "name": "...", "version": "...", "description": "...", "signed": false }
 /// ```
@@ -710,8 +713,8 @@ pub fn diagnose_connection(config: &HealthCheckConfig) -> HealthReport {
     // --- 3. TLS + HTTP + Auth (via ureq request) ---
     let scheme = if config.tls_enabled { "https" } else { "http" };
     let url = format!(
-        "{}://{}:{}/policy/v0/list",
-        scheme, config.host, config.port
+        "{}://{}:{}{}/list",
+        scheme, config.host, config.port, POLICY_API_BASE
     );
 
     let agent = match build_diagnostic_agent(config) {
@@ -988,7 +991,7 @@ pub fn filter_summaries(summaries: &mut Vec<PolicySummary>, filter: &ListFilter)
 }
 
 /// Retry configuration.
-/// Response wrapper for `GET /policy/v0/list`.
+/// Response wrapper for `GET /management/policy/v0/list`.
 #[derive(Debug, Clone, Deserialize)]
 struct ListResponse {
     policies: Vec<PolicySummary>,

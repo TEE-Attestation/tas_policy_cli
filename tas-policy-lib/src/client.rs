@@ -141,6 +141,7 @@ impl TasClient {
     ///
     /// Builds the signed envelope (RSA-SHA384-PSS over canonical validation_rules),
     /// then POSTs it to `POST /management/policy/v0/store`.
+    /// Returns `Error::AlreadyExists` if a policy with the same key already exists on the server.
     ///
     /// # Upcoming Tasks
     /// * Investigate if CIPHERTEXT_HIDING_DRAM can be set to true for SEV, whne Ubuntu 26.04 arrives, and update the SEV policy builder accordingly.
@@ -152,16 +153,16 @@ impl TasClient {
     ) -> Result<ApiResponse<CreateResult>> {
         let policy = policy.into();
 
-        // Reject if a policy with the same key already exists on the server.
-        let policy_key = format!("policy:{}:{}", policy.cvm_type(), policy.key_id());
-        if self.get_policy(&policy_key).is_ok() {
-            return Err(Error::AlreadyExists(policy_key));
-        }
-
         let mut envelope = Self::build_envelope(&policy)?;
         sign_envelope(signing_key, &mut envelope)?;
 
-        let (_body, deprecation) = self.post(&format!("{}/store", POLICY_API_BASE), &envelope)?;
+        let policy_key = format!("policy:{}:{}", policy.cvm_type(), policy.key_id());
+        let (_body, deprecation) = self
+            .post(&format!("{}/store", POLICY_API_BASE), &envelope)
+            .map_err(|e| match e {
+                Error::ApiError { status: 409, .. } => Error::AlreadyExists(policy_key.clone()),
+                other => other,
+            })?;
 
         Ok(ApiResponse::new(
             CreateResult {
@@ -178,12 +179,16 @@ impl TasClient {
 
     /// Delete a policy by key.
     ///
-    /// Checks that the policy exists, then sends `DELETE /management/policy/v0/delete/{policy_key}`.
+    /// Sends `DELETE /management/policy/v0/delete/{policy_key}`.
+    /// Returns `Error::NotFound` if the policy does not exist on the server.
     pub fn delete_policy(&self, policy_key: &str) -> Result<ApiResponse<()>> {
-        self.get_policy(policy_key)
-            .map_err(|_| Error::NotFound(format!("policy '{}' does not exist", policy_key)))?;
         let path = format!("{}/delete/{}", POLICY_API_BASE, policy_key);
-        let (_body, deprecation) = self.delete_request(&path)?;
+        let (_body, deprecation) = self.delete_request(&path).map_err(|e| match e {
+            Error::ApiError { status: 404, .. } => {
+                Error::NotFound(format!("policy '{}' does not exist", policy_key))
+            }
+            other => other,
+        })?;
         Ok(ApiResponse::new((), Some(deprecation)))
     }
 

@@ -9,4 +9,4 @@ pub mod key_loader;
 pub mod signer;
 
 pub use key_loader::SigningKey;
-pub use signer::{Signature, sign_envelope, sign_validation_rules};
+pub use signer::{Signature, sign_envelope};

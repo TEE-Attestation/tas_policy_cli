@@ -107,4 +107,4 @@ pub use policy::{
     TdxConfig, TdxMeasurements, TdxOverrides, TdxPolicy, TdxPolicyBuilder, TdxTcbRules,
     TdxValidationRules, ValidationError, ValidationRules,
 };
-pub use signing::{Signature, SigningKey, sign_envelope, sign_validation_rules};
+pub use signing::{Signature, SigningKey, sign_envelope};

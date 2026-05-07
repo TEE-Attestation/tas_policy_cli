@@ -18,7 +18,7 @@ use sha2::Sha384;
 
 use super::key_loader::SigningKey;
 use crate::error::{Error, Result};
-use crate::policy::signed::{PolicySignature, SignedPolicyEnvelope, ValidationRules};
+use crate::policy::signed::{PolicySignature, SignedPolicyEnvelope};
 
 /// RSA-SHA384-PSS signature bytes.
 #[derive(Debug, Clone)]
@@ -52,30 +52,6 @@ fn canonical_policy_bytes(envelope: &SignedPolicyEnvelope) -> Result<Vec<u8>> {
     serde_jcs::to_vec(&value).map_err(|e| Error::Serialization(e.to_string()))
 }
 
-/// Produce the canonical JSON bytes of validation_rules for signing.
-///
-/// Used when `signed_data` is set to `"validation_rules"` for backward
-/// compatibility with policies that only sign the validation rules.
-fn canonical_validation_rules_bytes(rules: &ValidationRules) -> Result<Vec<u8>> {
-    let value = serde_json::to_value(rules).map_err(|e| Error::Serialization(e.to_string()))?;
-    serde_jcs::to_vec(&value).map_err(|e| Error::Serialization(e.to_string()))
-}
-
-/// Sign validation rules with an RSA private key using SHA384-PSS.
-///
-/// This produces a signature compatible with TAS server verification
-/// when `signed_data` is `"validation_rules"`.
-pub fn sign_validation_rules(key: &SigningKey, rules: &ValidationRules) -> Result<Signature> {
-    let data = canonical_validation_rules_bytes(rules)?;
-    let signing_key = BlindedSigningKey::<Sha384>::new(key.private_key.clone());
-    let mut rng = rsa::rand_core::OsRng;
-    let pss_sig: PssSignature = signing_key.sign_with_rng(&mut rng, &data);
-
-    Ok(Signature {
-        bytes: pss_sig.to_vec(),
-    })
-}
-
 /// Sign a policy envelope in place — fills in the real signature.
 ///
 /// Signs all top-level fields except `signature` using RFC 8785 JCS
@@ -94,7 +70,6 @@ pub fn sign_envelope(key: &SigningKey, envelope: &mut SignedPolicyEnvelope) -> R
         algorithm: "SHA384".to_string(),
         padding: "PSS".to_string(),
         value: sig.to_base64(),
-        signed_data: None,
     };
 
     Ok(())

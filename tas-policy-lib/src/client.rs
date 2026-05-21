@@ -168,8 +168,7 @@ impl TasClient {
             CreateResult {
                 policy_key: format!(
                     "policy:{}:{}",
-                    envelope.metadata.policy_type,
-                    envelope.metadata.key_id
+                    envelope.metadata.policy_type, envelope.metadata.key_id
                 ),
                 cvm_type: policy.cvm_type(),
             },

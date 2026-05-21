@@ -239,10 +239,10 @@ pub struct CreateArgs {
 pub enum CvmTypeArg {
     /// Intel Trust Domain Extensions
     #[value(alias = "tdx")]
-    TDX,
+    Tdx,
     /// AMD Secure Encrypted Virtualization
     #[value(alias = "sev")]
-    SEV,
+    Sev,
 }
 
 /// Processor family enum for CLI.

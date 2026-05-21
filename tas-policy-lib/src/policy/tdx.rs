@@ -471,9 +471,11 @@ mod tests {
     #[test]
     fn test_bad_config_rtmr0_too_short() {
         // rtmr0 is only 10 chars
-        let mut config = TdxConfig::default();
-        config.key_id = "test-key".into();
-        config.rtmr0 = Some("0001020304".into()); // 10 chars, need 96
+        let config = TdxConfig {
+            key_id: "test-key".into(),
+            rtmr0: Some("0001020304".into()), // 10 chars, need 96
+            ..Default::default()
+        };
         let result = TdxPolicy::from_config(config);
         assert!(result.is_err(), "should reject rtmr0 with wrong length");
         let err = result.unwrap_err().to_string();
@@ -486,10 +488,12 @@ mod tests {
 
     #[test]
     fn test_bad_config_non_hex_characters() {
-        let mut config = TdxConfig::default();
-        config.key_id = "test-key".into();
-        // 96 chars but contains non-hex 'Z' characters
-        config.mrtd = Some("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ".into());
+        let config = TdxConfig {
+            key_id: "test-key".into(),
+            // 96 chars but contains non-hex 'Z' characters
+            mrtd: Some("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ".into()),
+            ..Default::default()
+        };
         let result = TdxPolicy::from_config(config);
         assert!(result.is_err(), "should reject non-hex characters");
         let err = result.unwrap_err().to_string();
@@ -513,7 +517,7 @@ mod tests {
 
         use crate::policy::types::Policy;
         use crate::policy::validation::validate_policy;
-        let errors = validate_policy(&Policy::Tdx(policy)).unwrap();
+        let errors = validate_policy(&Policy::Tdx(Box::new(policy))).unwrap();
         assert!(!errors.is_empty(), "validator should catch empty key_id");
         assert!(
             errors.iter().any(|e| e.field == "key_id"),
@@ -535,7 +539,7 @@ mod tests {
 
         use crate::policy::types::Policy;
         use crate::policy::validation::validate_policy;
-        let errors = validate_policy(&Policy::Tdx(policy)).unwrap();
+        let errors = validate_policy(&Policy::Tdx(Box::new(policy))).unwrap();
         assert!(
             !errors.is_empty(),
             "validator should catch missing TCB and measurements"
@@ -551,9 +555,11 @@ mod tests {
 
     #[test]
     fn test_bad_config_empty_rtmr1() {
-        let mut config = TdxConfig::default();
-        config.key_id = "test-key".into();
-        config.rtmr1 = Some("".into()); // empty string
+        let config = TdxConfig {
+            key_id: "test-key".into(),
+            rtmr1: Some("".into()), // empty string
+            ..Default::default()
+        };
         let result = TdxPolicy::from_config(config);
         assert!(result.is_err(), "should reject empty measurement hash");
         let err = result.unwrap_err().to_string();

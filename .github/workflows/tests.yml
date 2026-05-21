@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+    - name: Clippy
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+    - name: Build debug
+      run: cargo build --workspace --all-features
+
+    - name: Build release
+      run: cargo build --workspace --release --all-features
+
+    - name: Run tests (debug)
+      run: cargo test --workspace --all-features
+
+    - name: Run tests (release)
+      run: cargo test --workspace --release --all-features
+
+    - name: Build docs
+      run: cargo doc --workspace --no-deps --all-features

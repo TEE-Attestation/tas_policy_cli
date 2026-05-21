@@ -283,10 +283,11 @@ impl SevConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProcessorFamily {
     Milan,
+    #[default]
     Genoa,
     Turin,
 }
@@ -308,12 +309,6 @@ impl ProcessorFamily {
                 .min_ucode_svn(1)
                 .min_snp_iface_ver(1),
         }
-    }
-}
-
-impl Default for ProcessorFamily {
-    fn default() -> Self {
-        Self::Genoa
     }
 }
 
@@ -362,22 +357,12 @@ impl SevTcbConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SevSecurityFlags {
     pub debug_allowed: bool,
     pub migrate_ma_allowed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub smt_allowed: Option<bool>,
-}
-
-impl Default for SevSecurityFlags {
-    fn default() -> Self {
-        Self {
-            debug_allowed: false,
-            migrate_ma_allowed: false,
-            smt_allowed: None,
-        }
-    }
 }
 
 pub struct SevPolicyBuilder {
@@ -594,7 +579,7 @@ mod tests {
 
         use crate::policy::types::Policy;
         use crate::policy::validation::validate_policy;
-        let errors = validate_policy(&Policy::Sev(policy)).unwrap();
+        let errors = validate_policy(&Policy::Sev(Box::new(policy))).unwrap();
         assert!(!errors.is_empty(), "validator should catch empty key_id");
         assert!(
             errors.iter().any(|e| e.field == "key_id"),
@@ -619,7 +604,7 @@ mod tests {
 
         use crate::policy::types::Policy;
         use crate::policy::validation::validate_policy;
-        let errors = validate_policy(&Policy::Sev(policy)).unwrap();
+        let errors = validate_policy(&Policy::Sev(Box::new(policy))).unwrap();
         assert!(
             !errors.is_empty(),
             "validator should catch missing TCB and measurement"
@@ -694,7 +679,7 @@ mod tests {
 
         use crate::policy::types::Policy;
         use crate::policy::validation::validate_policy;
-        let errors = validate_policy(&Policy::Sev(policy)).unwrap();
+        let errors = validate_policy(&Policy::Sev(Box::new(policy))).unwrap();
         assert!(
             errors.iter().any(|e| e.field == "vmpl"),
             "expected 'vmpl' field error for value 5, got: {:?}",
@@ -709,8 +694,8 @@ mod tests {
     #[test]
     fn default_security_flags_omit_smt_allowed() {
         let flags = SevSecurityFlags::default();
-        assert_eq!(flags.debug_allowed, false);
-        assert_eq!(flags.migrate_ma_allowed, false);
+        assert!(!flags.debug_allowed);
+        assert!(!flags.migrate_ma_allowed);
         assert!(
             flags.smt_allowed.is_none(),
             "smt_allowed should be None by default"

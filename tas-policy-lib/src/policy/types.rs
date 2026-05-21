@@ -43,8 +43,8 @@ impl std::str::FromStr for CvmType {
 /// A unified policy enum supporting both TDX and SEV.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Policy {
-    Tdx(TdxPolicy),
-    Sev(SevPolicy),
+    Tdx(Box<TdxPolicy>),
+    Sev(Box<SevPolicy>),
 }
 
 impl Policy {
@@ -65,13 +65,13 @@ impl Policy {
 
 impl From<TdxPolicy> for Policy {
     fn from(tdx: TdxPolicy) -> Policy {
-        Policy::Tdx(tdx)
+        Policy::Tdx(Box::new(tdx))
     }
 }
 
 impl From<SevPolicy> for Policy {
     fn from(sev: SevPolicy) -> Policy {
-        Policy::Sev(sev)
+        Policy::Sev(Box::new(sev))
     }
 }
 

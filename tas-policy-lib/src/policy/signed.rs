@@ -48,7 +48,7 @@ pub struct SignedPolicyEnvelope {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ValidationRules {
-    Tdx(TdxValidationRules),
+    Tdx(Box<TdxValidationRules>),
     Sev(SevValidationRules),
 }
 
@@ -268,19 +268,19 @@ impl SignedPolicyEnvelope {
 
         // Convert internal TcbConfig → TdxTcbRules (string values)
         let tcb = policy.tcb.as_ref().map(|t| TdxTcbRules {
-            update: serde_json::to_value(&t.update)
+            update: serde_json::to_value(t.update)
                 .ok()
                 .and_then(|v| v.as_str().map(String::from))
                 .unwrap_or_default(),
-            platform_tcb: serde_json::to_value(&t.platform_tcb)
+            platform_tcb: serde_json::to_value(t.platform_tcb)
                 .ok()
                 .and_then(|v| v.as_str().map(String::from))
                 .unwrap_or_default(),
-            tdx_module_tcb: serde_json::to_value(&t.tdx_module_tcb)
+            tdx_module_tcb: serde_json::to_value(t.tdx_module_tcb)
                 .ok()
                 .and_then(|v| v.as_str().map(String::from))
                 .unwrap_or_default(),
-            qe_tcb: serde_json::to_value(&t.qe_tcb)
+            qe_tcb: serde_json::to_value(t.qe_tcb)
                 .ok()
                 .and_then(|v| v.as_str().map(String::from))
                 .unwrap_or_default(),
@@ -292,11 +292,11 @@ impl SignedPolicyEnvelope {
                 key_id: policy.key_id.clone(),
                 ..policy.metadata.clone()
             },
-            validation_rules: ValidationRules::Tdx(TdxValidationRules {
+            validation_rules: ValidationRules::Tdx(Box::new(TdxValidationRules {
                 tcb,
                 body,
                 min_tee_tcb_svn: policy.min_tee_tcb_svn,
-            }),
+            })),
             signature,
         }
     }
@@ -326,36 +326,36 @@ impl SignedPolicyEnvelope {
                 ..policy.metadata.clone()
             },
             validation_rules: ValidationRules::Sev(SevValidationRules {
-                    measurement: policy.measurement.as_ref().map(|m| ExactMatchString {
-                        exact_match: m.to_hex(),
-                    }),
-                    vmpl: policy.vmpl.map(|v| ExactMatchU8 { exact_match: v }),
-                    policy: policy.policy_flags.clone(),
-                    committed_tcb: current_tcb.clone(),
-                    launch_tcb: current_tcb.clone(),
-                    current_tcb,
-                    host_data: policy.host_data.as_ref().map(|m| ExactMatchString {
-                        exact_match: m.to_hex(),
-                    }),
-                    platform_info: policy
-                        .platform_info
-                        .as_ref()
-                        .map(|pi| SevPlatformInfoRules {
-                            ecc_enabled: Some(BooleanMatch {
-                                boolean: pi.ecc_enabled,
-                            }),
-                            tsme_enabled: Some(BooleanMatch {
-                                boolean: pi.tsme_enabled,
-                            }),
-                            alias_check_complete: Some(BooleanMatch {
-                                boolean: pi.alias_check_complete,
-                            }),
-                            smt_enabled: Some(BooleanMatch {
-                                boolean: pi.smt_enabled,
-                            }),
-                        }),
+                measurement: policy.measurement.as_ref().map(|m| ExactMatchString {
+                    exact_match: m.to_hex(),
                 }),
-                signature,
+                vmpl: policy.vmpl.map(|v| ExactMatchU8 { exact_match: v }),
+                policy: policy.policy_flags.clone(),
+                committed_tcb: current_tcb.clone(),
+                launch_tcb: current_tcb.clone(),
+                current_tcb,
+                host_data: policy.host_data.as_ref().map(|m| ExactMatchString {
+                    exact_match: m.to_hex(),
+                }),
+                platform_info: policy
+                    .platform_info
+                    .as_ref()
+                    .map(|pi| SevPlatformInfoRules {
+                        ecc_enabled: Some(BooleanMatch {
+                            boolean: pi.ecc_enabled,
+                        }),
+                        tsme_enabled: Some(BooleanMatch {
+                            boolean: pi.tsme_enabled,
+                        }),
+                        alias_check_complete: Some(BooleanMatch {
+                            boolean: pi.alias_check_complete,
+                        }),
+                        smt_enabled: Some(BooleanMatch {
+                            boolean: pi.smt_enabled,
+                        }),
+                    }),
+            }),
+            signature,
         }
     }
 
@@ -413,13 +413,13 @@ impl SignedPolicyEnvelope {
                     TcbConfig::new(update, platform_tcb, tdx_module_tcb, qe_tcb)
                 });
 
-                Ok(super::types::Policy::Tdx(TdxPolicy {
+                Ok(super::types::Policy::Tdx(Box::new(TdxPolicy {
                     key_id,
                     metadata: self.metadata.clone(),
                     measurements,
                     tcb,
                     min_tee_tcb_svn: tdx_rules.min_tee_tcb_svn,
-                }))
+                })))
             }
             ValidationRules::Sev(sev_rules) => {
                 // Convert ExactMatchString -> MeasurementHash
@@ -448,7 +448,7 @@ impl SignedPolicyEnvelope {
                         min_snp_iface_ver: None,
                     });
 
-                Ok(super::types::Policy::Sev(SevPolicy {
+                Ok(super::types::Policy::Sev(Box::new(SevPolicy {
                     key_id,
                     metadata: self.metadata.clone(),
                     measurement,
@@ -457,15 +457,15 @@ impl SignedPolicyEnvelope {
                     vmpl: sev_rules.vmpl.as_ref().map(|v| v.exact_match),
                     host_data,
                     platform_info: sev_rules.platform_info.as_ref().map(|pi| SevPlatformInfo {
-                        ecc_enabled: pi.ecc_enabled.as_ref().map_or(true, |b| b.boolean),
-                        tsme_enabled: pi.tsme_enabled.as_ref().map_or(true, |b| b.boolean),
+                        ecc_enabled: pi.ecc_enabled.as_ref().is_none_or(|b| b.boolean),
+                        tsme_enabled: pi.tsme_enabled.as_ref().is_none_or(|b| b.boolean),
                         alias_check_complete: pi
                             .alias_check_complete
                             .as_ref()
-                            .map_or(false, |b| b.boolean),
-                        smt_enabled: pi.smt_enabled.as_ref().map_or(true, |b| b.boolean),
+                            .is_some_and(|b| b.boolean),
+                        smt_enabled: pi.smt_enabled.as_ref().is_none_or(|b| b.boolean),
                     }),
-                }))
+                })))
             }
         }
     }

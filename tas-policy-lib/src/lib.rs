@@ -103,8 +103,8 @@ pub use policy::{
     CvmType, ExactMatchString, ExactMatchU8, MeasurementHash, MinValue, Policy, PolicyMetadata,
     PolicySignature, ProcessorFamily, SevConfig, SevCurrentTcb, SevOverrides, SevPlatformInfo,
     SevPolicy, SevPolicyBuilder, SevSecurityFlags, SevTcbConfig, SevValidationRules,
-    SignedPolicyEnvelope, TcbConfig, TcbStatus, TcbUpdate, TdxBodyRules,
-    TdxConfig, TdxMeasurements, TdxOverrides, TdxPolicy, TdxPolicyBuilder, TdxTcbRules,
-    TdxValidationRules, ValidationError, ValidationRules,
+    SignedPolicyEnvelope, TcbConfig, TcbStatus, TcbUpdate, TdxBodyRules, TdxConfig,
+    TdxMeasurements, TdxOverrides, TdxPolicy, TdxPolicyBuilder, TdxTcbRules, TdxValidationRules,
+    ValidationError, ValidationRules,
 };
 pub use signing::{Signature, SigningKey, sign_envelope};

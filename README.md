@@ -510,6 +510,10 @@ All connection options listed in [Global options](#global-options) can also be
 set via the corresponding environment variable (see the "Env var" column).
 `RUST_LOG` is the only additional variable that is not exposed as a flag.
 
+## Contributing
+
+Contributing to the project is simple! Just send a pull request through GitHub. For detailed instructions on formatting your changes and following our contribution guidelines, take a look at the [CONTRIBUTING](./CONTRIBUTING.md)  file.
+
 ## Licence
 
 [MIT](LICENSE) — Copyright 2026 Hewlett Packard Enterprise Development LP.

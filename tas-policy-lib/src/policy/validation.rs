@@ -44,13 +44,13 @@ pub fn validate_policy(policy: &Policy) -> Result<Vec<ValidationError>> {
                     message: "must not be empty".into(),
                 });
             }
-            if let Some(vmpl) = sev.vmpl {
-                if vmpl > 3 {
-                    errors.push(ValidationError {
-                        field: "vmpl".into(),
-                        message: format!("invalid value {}, expected 0-3", vmpl),
-                    });
-                }
+            if let Some(vmpl) = sev.vmpl
+                && vmpl > 3
+            {
+                errors.push(ValidationError {
+                    field: "vmpl".into(),
+                    message: format!("invalid value {}, expected 0-3", vmpl),
+                });
             }
             if sev.tcb.is_none() && sev.measurement.is_none() {
                 errors.push(ValidationError {

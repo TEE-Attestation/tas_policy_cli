@@ -14,8 +14,8 @@ use zeroize::Zeroize;
 /// Execute the `create` command.
 pub fn execute(args: CreateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
     match args.cvm_type {
-        CvmTypeArg::TDX => execute_tdx(&args, global),
-        CvmTypeArg::SEV => execute_sev(&args, global),
+        CvmTypeArg::Tdx => execute_tdx(&args, global),
+        CvmTypeArg::Sev => execute_sev(&args, global),
     }
 }
 

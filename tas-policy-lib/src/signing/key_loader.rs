@@ -49,9 +49,7 @@ impl SigningKey {
                     ))
                 })
                 .or_else(|pkcs8_err| {
-                    log::debug!(
-                        "PKCS#8 encrypted parse failed, trying legacy format: {pkcs8_err}"
-                    );
+                    log::debug!("PKCS#8 encrypted parse failed, trying legacy format: {pkcs8_err}");
                     decrypt_legacy_openssl_pem(&pem_data, pass).map_err(|e| {
                         Error::SigningError(format!(
                             "failed to load key from {}: not valid PKCS#8 encrypted ({}), \
@@ -120,7 +118,7 @@ fn evp_bytes_to_key(password: &[u8], salt: &[u8], key_len: usize) -> Vec<u8> {
 ///
 /// Supports AES-128-CBC and AES-256-CBC ciphers.
 fn decrypt_legacy_openssl_pem(pem_data: &str, password: &str) -> Result<RsaPrivateKey> {
-    use cbc::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+    use cbc::cipher::{BlockDecryptMut, KeyIvInit, block_padding::Pkcs7};
 
     let parsed = pem::parse(pem_data)
         .map_err(|e| Error::SigningError(format!("failed to parse PEM: {e}")))?;
@@ -146,7 +144,11 @@ fn decrypt_legacy_openssl_pem(pem_data: &str, password: &str) -> Result<RsaPriva
         .step_by(2)
         .map(|i| u8::from_str_radix(&init_vec_hex.trim()[i..i + 2], 16))
         .collect::<std::result::Result<_, _>>()
-        .map_err(|e| Error::SigningError(format!("invalid initialisation vector hex in DEK-Info: {e}")))?;
+        .map_err(|e| {
+            Error::SigningError(format!(
+                "invalid initialisation vector hex in DEK-Info: {e}"
+            ))
+        })?;
 
     let encrypted_der = parsed.into_contents();
 
@@ -160,9 +162,7 @@ fn decrypt_legacy_openssl_pem(pem_data: &str, password: &str) -> Result<RsaPriva
             cbc::Decryptor::<aes::Aes256>::new_from_slices(&key, &init_vec)
                 .map_err(|e| Error::SigningError(format!("cipher init: {e}")))?
                 .decrypt_padded_mut::<Pkcs7>(&mut buf)
-                .map_err(|_| {
-                    Error::SigningError("decryption failed (wrong passphrase?)".into())
-                })?
+                .map_err(|_| Error::SigningError("decryption failed (wrong passphrase?)".into()))?
                 .to_vec()
         }
         "AES-128-CBC" => {
@@ -171,9 +171,7 @@ fn decrypt_legacy_openssl_pem(pem_data: &str, password: &str) -> Result<RsaPriva
             cbc::Decryptor::<aes::Aes128>::new_from_slices(&key, &init_vec)
                 .map_err(|e| Error::SigningError(format!("cipher init: {e}")))?
                 .decrypt_padded_mut::<Pkcs7>(&mut buf)
-                .map_err(|_| {
-                    Error::SigningError("decryption failed (wrong passphrase?)".into())
-                })?
+                .map_err(|_| Error::SigningError("decryption failed (wrong passphrase?)".into()))?
                 .to_vec()
         }
         other => {

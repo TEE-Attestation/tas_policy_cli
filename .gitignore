@@ -15,3 +15,6 @@ Cargo.lock
 
 # vscode files
 .vscode
+
+# No skills folder
+.github/skills

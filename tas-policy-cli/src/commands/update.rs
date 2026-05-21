@@ -76,7 +76,7 @@ pub fn execute(args: UpdateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
     let mut pass_raw = args
         .signing_key_pass_file
         .as_ref()
-        .map(|p| std::fs::read_to_string(p))
+        .map(std::fs::read_to_string)
         .transpose()
         .map_err(|e| anyhow::anyhow!("Failed to read signing key passphrase file: {}", e))?;
     let password = pass_raw.as_deref().map(|s| s.trim());
@@ -107,10 +107,10 @@ pub fn execute(args: UpdateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
     info!("Creating updated policy '{}'...", args.policy_key);
     let result = match policy {
         Policy::Tdx(tdx) => client
-            .create_policy(tdx, &signing_key)
+            .create_policy(*tdx, &signing_key)
             .map_err(|e| anyhow::anyhow!("Failed to create updated policy: {}", e))?,
         Policy::Sev(sev) => client
-            .create_policy(sev, &signing_key)
+            .create_policy(*sev, &signing_key)
             .map_err(|e| anyhow::anyhow!("Failed to create updated policy: {}", e))?,
     };
 

@@ -10,4 +10,5 @@ pub mod delete;
 pub mod get;
 pub mod healthcheck;
 pub mod list;
+pub mod signing;
 pub mod update;

@@ -81,7 +81,7 @@
 //!     let policy = TdxPolicy::with_mrtd("vm-123-key", "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c700000000")?;
 //!     let key = SigningKey::from_file("/etc/tas/key.pem", None)?;
 //!     
-//!     let result = client.create_policy(policy, &key)?;
+//!     let result = client.create_policy(policy, Some(&key))?;
 //!     println!("Created: {}", result.data.policy_key);
 //!     Ok(())
 //! }

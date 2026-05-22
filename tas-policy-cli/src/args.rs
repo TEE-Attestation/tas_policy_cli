@@ -65,13 +65,21 @@ pub struct CreateArgs {
     #[arg(long, value_enum)]
     pub cvm_type: CvmTypeArg,
 
-    /// Path to signing key (PEM format).
-    #[arg(long)]
-    pub signing_key: PathBuf,
+    /// Path to signing key (PEM format). Required unless --unsigned is specified.
+    #[arg(
+        long,
+        required_unless_present = "unsigned",
+        conflicts_with = "unsigned"
+    )]
+    pub signing_key: Option<PathBuf>,
 
     /// Path to file containing signing key passphrase.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "unsigned")]
     pub signing_key_pass_file: Option<PathBuf>,
+
+    /// Create an unsigned policy (no signature field).
+    #[arg(long, conflicts_with = "signing_key")]
+    pub unsigned: bool,
 
     /// Human-readable policy name (required).
     #[arg(long)]
@@ -452,13 +460,21 @@ pub struct UpdateArgs {
     #[arg(long)]
     pub policy_key: String,
 
-    /// Path to signing key (PEM format).
-    #[arg(long)]
-    pub signing_key: std::path::PathBuf,
+    /// Path to signing key (PEM format). Required unless --unsigned is specified.
+    #[arg(
+        long,
+        required_unless_present = "unsigned",
+        conflicts_with = "unsigned"
+    )]
+    pub signing_key: Option<std::path::PathBuf>,
 
     /// Path to file containing signing key passphrase.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "unsigned")]
     pub signing_key_pass_file: Option<std::path::PathBuf>,
+
+    /// Update as an unsigned policy (no signature field).
+    #[arg(long, conflicts_with = "signing_key")]
+    pub unsigned: bool,
 
     /// Preview the merged policy without uploading.
     #[arg(long)]

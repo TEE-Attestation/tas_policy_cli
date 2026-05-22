@@ -37,7 +37,8 @@ use crate::signing::Signature;
 pub struct SignedPolicyEnvelope {
     pub metadata: PolicyMetadata,
     pub validation_rules: ValidationRules,
-    pub signature: PolicySignature,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<PolicySignature>,
 }
 
 // =============================================================================
@@ -248,7 +249,7 @@ impl PolicySignature {
 
 impl SignedPolicyEnvelope {
     /// Wrap a TDX policy with a signature into the API envelope.
-    pub fn from_tdx(policy: &TdxPolicy, signature: PolicySignature) -> Self {
+    pub fn from_tdx(policy: &TdxPolicy, signature: Option<PolicySignature>) -> Self {
         // Convert internal TdxMeasurements → TdxBodyRules (exact_match wrappers)
         let body = policy.measurements.as_ref().map(|m| {
             let to_em = |h: &super::types::MeasurementHash| ExactMatchString {
@@ -302,7 +303,7 @@ impl SignedPolicyEnvelope {
     }
 
     /// Wrap a SEV policy with a signature into the API envelope.
-    pub fn from_sev(policy: &SevPolicy, signature: PolicySignature) -> Self {
+    pub fn from_sev(policy: &SevPolicy, signature: Option<PolicySignature>) -> Self {
         // Convert internal SevTcbConfig → SevCurrentTcb (min_value wrappers)
         let current_tcb = policy.tcb.as_ref().map(|t| SevCurrentTcb {
             bootloader: Some(MinValue {
@@ -361,12 +362,12 @@ impl SignedPolicyEnvelope {
 
     /// Create a preview envelope (unsigned) for dry-run.
     pub fn preview_tdx(policy: &TdxPolicy) -> Self {
-        Self::from_tdx(policy, PolicySignature::placeholder())
+        Self::from_tdx(policy, Some(PolicySignature::placeholder()))
     }
 
     /// Create a preview envelope (unsigned) for dry-run.
     pub fn preview_sev(policy: &SevPolicy) -> Self {
-        Self::from_sev(policy, PolicySignature::placeholder())
+        Self::from_sev(policy, Some(PolicySignature::placeholder()))
     }
 
     /// Convert a signed policy envelope back into a `Policy`.

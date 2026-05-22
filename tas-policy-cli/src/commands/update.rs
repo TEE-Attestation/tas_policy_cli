@@ -8,10 +8,10 @@
 // policy and then creates a new one with the merged changes.
 
 use crate::args::{GlobalOpts, UpdateArgs};
+use crate::commands::signing;
 use crate::convert;
 use log::info;
-use tas_policy_lib::{Policy, PolicySignature, SignedPolicyEnvelope, SigningKey, sign_envelope};
-use zeroize::Zeroize;
+use tas_policy_lib::Policy;
 
 /// Execute the update command.
 ///
@@ -68,32 +68,23 @@ pub fn execute(args: UpdateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
         }
     }
 
-    // Load signing key
-    info!(
-        "Loading signing key from '{}'...",
-        args.signing_key.display()
-    );
-    let mut pass_raw = args
-        .signing_key_pass_file
-        .as_ref()
-        .map(std::fs::read_to_string)
-        .transpose()
-        .map_err(|e| anyhow::anyhow!("Failed to read signing key passphrase file: {}", e))?;
-    let password = pass_raw.as_deref().map(|s| s.trim());
-    let signing_key = SigningKey::from_file(&args.signing_key, password)
-        .map_err(|e| anyhow::anyhow!("Failed to load signing key: {}", e))?;
-    if let Some(ref mut raw) = pass_raw {
-        raw.zeroize();
-    }
+    // Load signing key (None if --unsigned)
+    let signing_key = if args.unsigned {
+        None
+    } else {
+        let path = args
+            .signing_key
+            .as_ref()
+            .expect("signing_key required when not unsigned");
+        info!("Loading signing key from '{}'...", path.display());
+        Some(signing::load_signing_key(
+            path,
+            &args.signing_key_pass_file,
+        )?)
+    };
 
-    // Dry-run: sign and print envelope locally, don't upload
     if args.dry_run {
-        let mut envelope = match &policy {
-            Policy::Tdx(tdx) => SignedPolicyEnvelope::from_tdx(tdx, PolicySignature::placeholder()),
-            Policy::Sev(sev) => SignedPolicyEnvelope::from_sev(sev, PolicySignature::placeholder()),
-        };
-        sign_envelope(&signing_key, &mut envelope)?;
-        println!("{}", serde_json::to_string_pretty(&envelope)?);
+        signing::dry_run(&policy, signing_key.as_ref())?;
         return Ok(());
     }
 
@@ -105,16 +96,7 @@ pub fn execute(args: UpdateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
 
     // Create the updated policy
     info!("Creating updated policy '{}'...", args.policy_key);
-    let result = match policy {
-        Policy::Tdx(tdx) => client
-            .create_policy(*tdx, &signing_key)
-            .map_err(|e| anyhow::anyhow!("Failed to create updated policy: {}", e))?,
-        Policy::Sev(sev) => client
-            .create_policy(*sev, &signing_key)
-            .map_err(|e| anyhow::anyhow!("Failed to create updated policy: {}", e))?,
-    };
-
-    crate::output::maybe_show_deprecation(&result, global.verbose);
-    println!("Policy '{}' updated successfully.", result.data.policy_key);
+    let policy_key = signing::upload(policy, signing_key.as_ref(), global)?;
+    println!("Policy '{}' updated successfully.", policy_key);
     Ok(())
 }

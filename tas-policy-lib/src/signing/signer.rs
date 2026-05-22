@@ -66,11 +66,11 @@ pub fn sign_envelope(key: &SigningKey, envelope: &mut SignedPolicyEnvelope) -> R
         bytes: pss_sig.to_vec(),
     };
 
-    envelope.signature = PolicySignature {
+    envelope.signature = Some(PolicySignature {
         algorithm: "SHA384".to_string(),
         padding: "PSS".to_string(),
         value: sig.to_base64(),
-    };
+    });
 
     Ok(())
 }

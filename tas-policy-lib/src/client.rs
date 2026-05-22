@@ -127,8 +127,21 @@ impl TasClient {
     /// Build a signed policy envelope from a Policy (internal helper).
     fn build_envelope(policy: &Policy) -> Result<SignedPolicyEnvelope> {
         let envelope = match policy {
-            Policy::Tdx(tdx) => SignedPolicyEnvelope::from_tdx(tdx, PolicySignature::placeholder()),
-            Policy::Sev(sev) => SignedPolicyEnvelope::from_sev(sev, PolicySignature::placeholder()),
+            Policy::Tdx(tdx) => {
+                SignedPolicyEnvelope::from_tdx(tdx, Some(PolicySignature::placeholder()))
+            }
+            Policy::Sev(sev) => {
+                SignedPolicyEnvelope::from_sev(sev, Some(PolicySignature::placeholder()))
+            }
+        };
+        Ok(envelope)
+    }
+
+    /// Build an unsigned policy envelope from a Policy (internal helper).
+    fn build_unsigned_envelope(policy: &Policy) -> Result<SignedPolicyEnvelope> {
+        let envelope = match policy {
+            Policy::Tdx(tdx) => SignedPolicyEnvelope::from_tdx(tdx, None),
+            Policy::Sev(sev) => SignedPolicyEnvelope::from_sev(sev, None),
         };
         Ok(envelope)
     }
@@ -139,8 +152,9 @@ impl TasClient {
 
     /// Create and upload a new policy.
     ///
-    /// Builds the signed envelope (RSA-SHA384-PSS over canonical validation_rules),
-    /// then POSTs it to `POST /management/policy/v0/store`.
+    /// Builds the envelope and POSTs it to `POST /management/policy/v0/store`.
+    /// If `signing_key` is provided, the envelope is signed (RSA-SHA384-PSS).
+    /// If `None`, the policy is uploaded unsigned (no signature field).
     /// Returns `Error::AlreadyExists` if a policy with the same key already exists on the server.
     ///
     /// # Upcoming Tasks
@@ -149,12 +163,17 @@ impl TasClient {
     pub fn create_policy<P: Into<Policy>>(
         &self,
         policy: P,
-        signing_key: &SigningKey,
+        signing_key: Option<&SigningKey>,
     ) -> Result<ApiResponse<CreateResult>> {
         let policy = policy.into();
 
-        let mut envelope = Self::build_envelope(&policy)?;
-        sign_envelope(signing_key, &mut envelope)?;
+        let mut envelope = match signing_key {
+            Some(_) => Self::build_envelope(&policy)?,
+            None => Self::build_unsigned_envelope(&policy)?,
+        };
+        if let Some(key) = signing_key {
+            sign_envelope(key, &mut envelope)?;
+        }
 
         let policy_key = format!("policy:{}:{}", policy.cvm_type(), policy.key_id());
         let (_body, deprecation) = self

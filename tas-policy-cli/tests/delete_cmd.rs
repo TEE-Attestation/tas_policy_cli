@@ -10,20 +10,20 @@ fn cmd() -> assert_cmd::Command {
 // ─── Argument validation ─────────────────────────────────────────────────────
 
 #[test]
-fn delete_requires_policy_key() {
-    // `delete` without --policy-key should fail with a usage error
+fn delete_requires_policy_id() {
+    // `delete` without --policy-id should fail with a usage error
     cmd()
         .arg("delete")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--policy-key"));
+        .stderr(predicate::str::contains("--policy-id"));
 }
 
 #[test]
-fn delete_help_shows_policy_key_option() {
+fn delete_help_shows_policy_id_option() {
     cmd()
         .args(["delete", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("--policy-key"));
+        .stdout(predicate::str::contains("--policy-id"));
 }

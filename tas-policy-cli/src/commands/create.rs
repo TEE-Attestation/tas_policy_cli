@@ -44,7 +44,7 @@ pub fn execute(args: CreateArgs, global: &GlobalOpts) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let policy_key = signing::upload(policy, signing_key.as_ref(), global)?;
-    println!("Policy created: {}", policy_key);
+    let policy_id = signing::upload(policy, signing_key.as_ref(), global)?;
+    println!("Policy created: {}", policy_id);
     Ok(())
 }

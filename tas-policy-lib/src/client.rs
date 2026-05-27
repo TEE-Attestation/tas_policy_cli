@@ -175,35 +175,32 @@ impl TasClient {
             sign_envelope(key, &mut envelope)?;
         }
 
-        let policy_key = format!("policy:{}:{}", policy.cvm_type(), policy.key_id());
+        let policy_id = policy.policy_id().to_string();
         let (_body, deprecation) = self
             .post(&format!("{}/store", POLICY_API_BASE), &envelope)
             .map_err(|e| match e {
-                Error::ApiError { status: 409, .. } => Error::AlreadyExists(policy_key.clone()),
+                Error::ApiError { status: 409, .. } => Error::AlreadyExists(policy_id.clone()),
                 other => other,
             })?;
 
         Ok(ApiResponse::new(
             CreateResult {
-                policy_key: format!(
-                    "policy:{}:{}",
-                    envelope.metadata.policy_type, envelope.metadata.key_id
-                ),
+                policy_id,
                 cvm_type: policy.cvm_type(),
             },
             Some(deprecation),
         ))
     }
 
-    /// Delete a policy by key.
+    /// Delete a policy by ID.
     ///
-    /// Sends `DELETE /management/policy/v0/delete/{policy_key}`.
+    /// Sends `DELETE /management/policy/v0/delete/{policy_id}`.
     /// Returns `Error::NotFound` if the policy does not exist on the server.
-    pub fn delete_policy(&self, policy_key: &str) -> Result<ApiResponse<()>> {
-        let path = format!("{}/delete/{}", POLICY_API_BASE, policy_key);
+    pub fn delete_policy(&self, policy_id: &str) -> Result<ApiResponse<()>> {
+        let path = format!("{}/delete/{}", POLICY_API_BASE, policy_id);
         let (_body, deprecation) = self.delete_request(&path).map_err(|e| match e {
             Error::ApiError { status: 404, .. } => {
-                Error::NotFound(format!("policy '{}' does not exist", policy_key))
+                Error::NotFound(format!("policy '{}' does not exist", policy_id))
             }
             other => other,
         })?;
@@ -229,13 +226,12 @@ impl TasClient {
         Ok(ApiResponse::new(summaries, Some(deprecation)))
     }
 
-    /// Get a specific policy by key.
+    /// Get a specific policy by ID.
     ///
-    /// Sends `GET /management/policy/v0/get/{policy_key}`.
-    /// The server returns a JSON object with `policy_key` and `policy` fields.
-    /// The CVM type is extracted from the `policy_key` (e.g. `"policy:TDX:my-id"`).
-    pub fn get_policy(&self, policy_key: &str) -> Result<ApiResponse<GetPolicyResponse>> {
-        let path = format!("{}/get/{}", POLICY_API_BASE, policy_key);
+    /// Sends `GET /management/policy/v0/get/{policy_id}`.
+    /// The server returns a JSON object with `policy_id` and `policy` fields.
+    pub fn get_policy(&self, policy_id: &str) -> Result<ApiResponse<GetPolicyResponse>> {
+        let path = format!("{}/get/{}", POLICY_API_BASE, policy_id);
         let (response, deprecation) = self.get(&path)?;
         let get_resp: GetPolicyResponse = serde_json::from_str(&response)?;
         Ok(ApiResponse::new(get_resp, Some(deprecation)))
@@ -577,7 +573,7 @@ impl<T> ApiResponse<T> {
 /// Result of a successful policy creation.
 #[derive(Debug, Clone)]
 pub struct CreateResult {
-    pub policy_key: String,
+    pub policy_id: String,
     pub cvm_type: crate::policy::CvmType,
 }
 
@@ -585,11 +581,16 @@ pub struct CreateResult {
 ///
 /// Matches the shape returned by `GET /management/policy/v0/list`:
 /// ```json
-/// { "policy_key": "...", "name": "...", "version": "...", "description": "...", "signed": false }
+/// { "policy_id": "...", "name": "...", "version": "...", "description": "...", "signed": false }
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicySummary {
-    pub policy_key: String,
+    #[serde(alias = "policy_key")]
+    pub policy_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "cvm_type")]
+    pub policy_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -601,9 +602,14 @@ pub struct PolicySummary {
 }
 
 impl PolicySummary {
-    /// Extract the CVM type from the policy_key (format: `policy:TYPE:key_id`).
+    /// Extract the CVM type from `policy_type` when present, otherwise fallback
+    /// to the legacy composite ID format `policy:TYPE:key_id`.
     pub fn cvm_type(&self) -> Option<crate::policy::CvmType> {
-        let parts: Vec<&str> = self.policy_key.splitn(3, ':').collect();
+        if let Some(ref policy_type) = self.policy_type {
+            return policy_type.parse().ok();
+        }
+
+        let parts: Vec<&str> = self.policy_id.splitn(3, ':').collect();
         if parts.len() >= 2 {
             parts[1].parse().ok()
         } else {
@@ -611,13 +617,18 @@ impl PolicySummary {
         }
     }
 
-    /// Extract the key_id from the policy_key (format: `policy:TYPE:key_id`).
+    /// Extract the key ID from `key_id` when present, otherwise fallback to
+    /// the legacy composite ID format `policy:TYPE:key_id`.
     pub fn key_id(&self) -> &str {
-        let parts: Vec<&str> = self.policy_key.splitn(3, ':').collect();
+        if let Some(ref key_id) = self.key_id {
+            return key_id;
+        }
+
+        let parts: Vec<&str> = self.policy_id.splitn(3, ':').collect();
         if parts.len() == 3 {
             parts[2]
         } else {
-            &self.policy_key
+            &self.policy_id
         }
     }
 }
@@ -949,49 +960,53 @@ pub struct ValidationReport {
     pub warnings: Vec<String>,
 }
 
-/// Response from the `GET /policy/v0/get/{policy_key}` endpoint.
+/// Response from the `GET /policy/v0/get/{policy_id}` endpoint.
 ///
 /// The server returns this format:
 /// ```json
 /// {
-///   "policy_key": "policy:TDX:my-id",
+///   "policy_id": "my-tdx-id",
 ///   "policy": { "metadata": {...}, "validation_rules": {...}, "signature": {...} }
 /// }
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetPolicyResponse {
-    pub policy_key: String,
+    #[serde(alias = "policy_key")]
+    pub policy_id: String,
     pub policy: crate::policy::signed::SignedPolicyEnvelope,
 }
 
 impl GetPolicyResponse {
     /// Convert the server GET response into a `Policy`.
-    ///
-    /// The CVM type is determined from the `policy_key` (e.g. `"policy:TDX:my-id"`)
-    /// and the `validation_rules` variant within the body.
     pub fn to_policy(&self) -> Result<Policy> {
-        // Extract key_id from policy_key format "policy:TYPE:key_id"
-        let parts: Vec<&str> = self.policy_key.splitn(3, ':').collect();
-        let key_id = if parts.len() == 3 {
-            parts[2].to_string()
-        } else {
-            self.policy_key.clone()
-        };
-
-        let policy_type = if parts.len() >= 2 {
-            parts[1].to_string()
-        } else {
-            // Infer from validation_rules variant
-            match &self.policy.validation_rules {
-                crate::policy::signed::ValidationRules::Tdx(_) => "TDX".to_string(),
-                crate::policy::signed::ValidationRules::Sev(_) => "SEV".to_string(),
-            }
-        };
-
-        // Build an envelope with policy_type/key_id in metadata for to_policy()
         let mut envelope = self.policy.clone();
-        envelope.metadata.policy_type = policy_type;
-        envelope.metadata.key_id = key_id;
+
+        // Canonical source of policy identifier.
+        if envelope.metadata.policy_id.is_empty() {
+            envelope.metadata.policy_id = self.policy_id.clone();
+        }
+
+        // Legacy compatibility: infer missing metadata from either legacy
+        // composite IDs or validation_rules type.
+        if envelope.metadata.policy_type.is_empty() {
+            let parts: Vec<&str> = self.policy_id.splitn(3, ':').collect();
+            if parts.len() >= 2 {
+                envelope.metadata.policy_type = parts[1].to_string();
+            } else {
+                envelope.metadata.policy_type = match &self.policy.validation_rules {
+                    crate::policy::signed::ValidationRules::Tdx(_) => "TDX".to_string(),
+                    crate::policy::signed::ValidationRules::Sev(_) => "SEV".to_string(),
+                };
+            }
+        }
+
+        if envelope.metadata.key_id.is_empty() {
+            let parts: Vec<&str> = self.policy_id.splitn(3, ':').collect();
+            if parts.len() == 3 {
+                envelope.metadata.key_id = parts[2].to_string();
+            }
+        }
+
         envelope.to_policy()
     }
 }
@@ -1047,10 +1062,12 @@ mod tests {
     use super::*;
     use crate::policy::CvmType;
 
-    /// Helper: build a `PolicySummary` with the given policy_key, name, and signed flag.
-    fn make_summary(policy_key: &str, name: Option<&str>, signed: bool) -> PolicySummary {
+    /// Helper: build a `PolicySummary` with the given policy_id, name, and signed flag.
+    fn make_summary(policy_id: &str, name: Option<&str>, signed: bool) -> PolicySummary {
         PolicySummary {
-            policy_key: policy_key.to_string(),
+            policy_id: policy_id.to_string(),
+            policy_type: None,
+            key_id: None,
             name: name.map(String::from),
             version: None,
             description: None,
@@ -1133,7 +1150,7 @@ mod tests {
         assert_eq!(
             s.key_id(),
             "no-colons",
-            "should fall back to full policy_key"
+            "should fall back to full policy_id"
         );
     }
 
@@ -1188,7 +1205,7 @@ mod tests {
         };
         filter_summaries(&mut summaries, &filter);
         assert_eq!(summaries.len(), 1);
-        assert_eq!(summaries[0].policy_key, "policy:SEV:sev-prod-001");
+        assert_eq!(summaries[0].policy_id, "policy:SEV:sev-prod-001");
     }
 
     #[test]
@@ -1228,14 +1245,14 @@ mod tests {
     #[test]
     fn summary_serde_full() {
         let json = r#"{
-            "policy_key": "policy:TDX:my-key",
+            "policy_id": "policy:TDX:my-key",
             "name": "My Policy",
             "version": "1.0",
             "description": "A test policy",
             "signed": true
         }"#;
         let s: PolicySummary = serde_json::from_str(json).expect("deserialize");
-        assert_eq!(s.policy_key, "policy:TDX:my-key");
+        assert_eq!(s.policy_id, "policy:TDX:my-key");
         assert_eq!(s.name.as_deref(), Some("My Policy"));
         assert_eq!(s.version.as_deref(), Some("1.0"));
         assert_eq!(s.description.as_deref(), Some("A test policy"));
@@ -1244,15 +1261,15 @@ mod tests {
         // Round-trip
         let out = serde_json::to_string(&s).expect("serialize");
         let s2: PolicySummary = serde_json::from_str(&out).expect("re-deserialize");
-        assert_eq!(s.policy_key, s2.policy_key);
+        assert_eq!(s.policy_id, s2.policy_id);
         assert_eq!(s.signed, s2.signed);
     }
 
     #[test]
     fn summary_serde_minimal() {
-        let json = r#"{ "policy_key": "policy:SEV:k", "signed": false }"#;
+        let json = r#"{ "policy_id": "policy:SEV:k", "signed": false }"#;
         let s: PolicySummary = serde_json::from_str(json).expect("deserialize minimal");
-        assert_eq!(s.policy_key, "policy:SEV:k");
+        assert_eq!(s.policy_id, "policy:SEV:k");
         assert!(s.name.is_none());
         assert!(s.version.is_none());
         assert!(s.description.is_none());
@@ -1267,16 +1284,16 @@ mod tests {
     fn list_response_deserializes() {
         let json = r#"{
             "policies": [
-                { "policy_key": "policy:TDX:a", "signed": true },
-                { "policy_key": "policy:SEV:b", "signed": false }
+                { "policy_id": "policy:TDX:a", "signed": true },
+                { "policy_id": "policy:SEV:b", "signed": false }
             ],
             "count": 2
         }"#;
         let resp: ListResponse = serde_json::from_str(json).expect("deserialize ListResponse");
         assert_eq!(resp.policies.len(), 2);
         assert_eq!(resp.count, 2);
-        assert_eq!(resp.policies[0].policy_key, "policy:TDX:a");
-        assert_eq!(resp.policies[1].policy_key, "policy:SEV:b");
+        assert_eq!(resp.policies[0].policy_id, "policy:TDX:a");
+        assert_eq!(resp.policies[1].policy_id, "policy:SEV:b");
     }
 
     #[test]

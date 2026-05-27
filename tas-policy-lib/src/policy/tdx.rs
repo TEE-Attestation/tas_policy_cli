@@ -13,6 +13,8 @@ use std::path::Path;
 /// TDX-specific policy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TdxPolicy {
+    #[serde(default)]
+    pub policy_id: String,
     pub key_id: String,
     pub metadata: PolicyMetadata,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,8 +26,13 @@ pub struct TdxPolicy {
 }
 
 impl TdxPolicy {
-    pub fn tcb_only(key_id: impl Into<String>, tcb: TcbConfig) -> Self {
+    pub fn tcb_only(
+        policy_id: impl Into<String>,
+        key_id: impl Into<String>,
+        tcb: TcbConfig,
+    ) -> Self {
         Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurements: None,
@@ -34,8 +41,13 @@ impl TdxPolicy {
         }
     }
 
-    pub fn with_mrtd(key_id: impl Into<String>, mrtd_hex: &str) -> Result<Self> {
+    pub fn with_mrtd(
+        policy_id: impl Into<String>,
+        key_id: impl Into<String>,
+        mrtd_hex: &str,
+    ) -> Result<Self> {
         Ok(Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurements: Some(TdxMeasurements {
@@ -79,6 +91,7 @@ impl TdxPolicy {
             if m.has_any() { Some(m) } else { None }
         };
         Ok(Self {
+            policy_id: config.policy_id,
             key_id: config.key_id,
             metadata: PolicyMetadata {
                 name: config.name,
@@ -97,8 +110,8 @@ impl TdxPolicy {
         })
     }
 
-    pub fn builder(key_id: impl Into<String>) -> TdxPolicyBuilder {
-        TdxPolicyBuilder::new(key_id)
+    pub fn builder(policy_id: impl Into<String>, key_id: impl Into<String>) -> TdxPolicyBuilder {
+        TdxPolicyBuilder::new(policy_id, key_id)
     }
 
     /// Merge overrides into this policy, replacing only the fields that are `Some`.
@@ -170,6 +183,8 @@ impl TdxPolicy {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TdxConfig {
+    #[serde(default)]
+    pub policy_id: String,
     pub key_id: String,
     #[serde(default)]
     pub name: String,
@@ -267,6 +282,7 @@ impl TcbConfig {
 }
 
 pub struct TdxPolicyBuilder {
+    policy_id: String,
     key_id: String,
     metadata: PolicyMetadata,
     measurements: TdxMeasurements,
@@ -276,8 +292,9 @@ pub struct TdxPolicyBuilder {
 }
 
 impl TdxPolicyBuilder {
-    pub fn new(key_id: impl Into<String>) -> Self {
+    pub fn new(policy_id: impl Into<String>, key_id: impl Into<String>) -> Self {
         Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurements: TdxMeasurements::default(),
@@ -371,6 +388,7 @@ impl TdxPolicyBuilder {
         };
 
         Ok(TdxPolicy {
+            policy_id: self.policy_id,
             key_id: self.key_id,
             metadata: self.metadata,
             measurements,
@@ -530,6 +548,7 @@ mod tests {
     fn test_bad_config_no_measurements_no_tcb() {
         // A policy with no measurements AND no TCB should fail validation
         let policy = TdxPolicy {
+            policy_id: "test-policy".into(),
             key_id: "some-key".into(),
             metadata: PolicyMetadata::default(),
             measurements: None,

@@ -50,6 +50,7 @@ impl From<TcbStatusArg> for TcbStatus {
 /// Extract a TdxConfig from the unified CreateArgs.
 pub fn into_tdx_config(args: &CreateArgs) -> TdxConfig {
     TdxConfig {
+        policy_id: args.policy_id.clone(),
         key_id: args.key_id.clone(),
         name: args.name.clone(),
         version: None,
@@ -86,6 +87,7 @@ pub fn into_sev_config(args: &CreateArgs) -> anyhow::Result<SevConfig> {
     let defaults = processor_family.default_tcb();
 
     Ok(SevConfig {
+        policy_id: args.policy_id.clone(),
         key_id: args.key_id.clone(),
         name: args.name.clone(),
         description: args.description.clone(),

@@ -14,23 +14,23 @@ use log::info;
 #[derive(Args)]
 pub struct DeleteArgs {
     #[arg(long)]
-    pub policy_key: String,
+    pub policy_id: String,
 }
 
 pub fn execute(args: DeleteArgs, global: &GlobalOpts) -> anyhow::Result<()> {
     let client = convert::build_client(global)?;
 
     if !interactive::confirm(
-        &format!("Delete policy '{}'?", args.policy_key),
+        &format!("Delete policy '{}'?", args.policy_id),
         global.non_interactive,
     ) {
         println!("Aborted.");
         return Ok(());
     }
 
-    let resp = client.delete_policy(&args.policy_key)?;
+    let resp = client.delete_policy(&args.policy_id)?;
     crate::output::maybe_show_deprecation(&resp, global.verbose);
-    info!("Policy '{}' deleted.", args.policy_key);
-    println!("Policy '{}' deleted successfully.", args.policy_key);
+    info!("Policy '{}' deleted.", args.policy_id);
+    println!("Policy '{}' deleted successfully.", args.policy_id);
     Ok(())
 }

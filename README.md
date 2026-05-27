@@ -126,8 +126,9 @@ Create and upload a signed attestation policy. You must specify the CVM type
 
 | Flag | Description |
 |------|-------------|
+| `--policy-id` | Unique policy identifier (required) |
 | `--cvm-type` | CVM type: `TDX` or `SEV` (required) |
-| `--key-id` | Unique policy key identifier (required) |
+| `--key-id` | Unique KMS key identifier (required) |
 | `--signing-key` | Path to signing key PEM file (required) |
 | `--signing-key-pass-file` | Path to file containing the signing key passphrase |
 | `--name` | Human-readable policy name (required) |
@@ -137,8 +138,9 @@ Create and upload a signed attestation policy. You must specify the CVM type
 ```bash
 # Create a TDX policy with measurement registers
 tas-policy create \
+  --policy-id tdx-prod-policy \
   --cvm-type TDX \
-  --key-id my-tdx-policy \
+  --key-id tdx-prod-release-key \
   --signing-key signing-key.pem \
   --name "Production TDX Policy" \
   --description "TDX policy for production workloads" \
@@ -147,8 +149,9 @@ tas-policy create \
 
 # Create a TDX fleet-wide policy (TCB checks only, no measurements)
 tas-policy create \
+  --policy-id fleet-tdx-policy \
   --cvm-type TDX \
-  --key-id fleet-tdx-policy \
+  --key-id fleet-tdx-release-key \
   --signing-key signing-key.pem \
   --tcb-only \
   --platform-tcb up-to-date \
@@ -156,14 +159,15 @@ tas-policy create \
 
 # Create an AMD SEV-SNP policy (SVN levels default to per-family values)
 tas-policy create \
+  --policy-id sev-prod-policy \
   --cvm-type SEV \
-  --key-id my-sev-policy \
+  --key-id sev-prod-release-key \
   --signing-key signing-key.pem \
   --processor-family genoa \
   --measurement a1b2c3...  # replace with your actual launch measurement (96 hex chars)
 
 # Preview without uploading
-tas-policy create --cvm-type TDX --key-id test --signing-key key.pem --tcb-only --dry-run
+tas-policy create --policy-id test-policy --cvm-type TDX --key-id test-release-key --signing-key key.pem --tcb-only --dry-run
 ```
 
 #### TDX-specific options
@@ -236,16 +240,16 @@ tas-policy list --output-format json
 ### `get` — Get a single policy
 
 ```bash
-# Get a policy by its full key
-tas-policy get --policy-key policy:TDX:my-tdx-policy
+# Get a policy by its policy ID
+tas-policy get --policy-id my-tdx-policy
 
 # Output as JSON for scripting
-tas-policy get --policy-key policy:SEV:my-sev-policy --output-format json
+tas-policy get --policy-id my-sev-policy --output-format json
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--policy-key` | Full policy key (e.g. `policy:TDX:my-key`) |
+| `--policy-id` | Policy ID (e.g. `my-tdx-policy`) |
 
 ### `update` — Update an existing policy
 
@@ -256,19 +260,19 @@ new version. Only the fields you specify are changed; everything else is kept.
 ```bash
 # Update a TDX policy's measurement
 tas-policy update \
-  --policy-key policy:TDX:my-tdx-policy \
+  --policy-id my-tdx-policy \
   --signing-key signing-key.pem \
   --mrtd aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 # Update an SEV policy's description
 tas-policy update \
-  --policy-key policy:SEV:my-sev-policy \
+  --policy-id my-sev-policy \
   --signing-key signing-key.pem \
   --description "Updated policy for production"
 
 # Preview merged policy without uploading
 tas-policy update \
-  --policy-key policy:TDX:my-tdx-policy \
+  --policy-id my-tdx-policy \
   --signing-key signing-key.pem \
   --name "New name" \
   --dry-run
@@ -283,16 +287,16 @@ Deletes a policy from the TAS server. The CLI will prompt for confirmation
 before proceeding. Pass `--non-interactive` to skip the prompt.
 
 ```bash
-# Interactive (asks "Delete policy 'policy:TDX:my-tdx-policy'?")
-tas-policy delete --policy-key policy:TDX:my-tdx-policy
+# Interactive (asks "Delete policy 'my-tdx-policy'?")
+tas-policy delete --policy-id my-tdx-policy
 
 # Non-interactive (no confirmation prompt)
-tas-policy delete --policy-key policy:TDX:my-tdx-policy --non-interactive
+tas-policy delete --policy-id my-tdx-policy --non-interactive
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--policy-key` | Full policy key to delete |
+| `--policy-id` | Policy ID to delete |
 
 ### `healthcheck` — Diagnose connectivity
 

@@ -66,7 +66,7 @@ pub fn dry_run(policy: &Policy, signing_key: Option<&SigningKey>) -> anyhow::Res
 
 /// Upload a policy to TAS (signed or unsigned).
 ///
-/// Returns the policy key on success.
+/// Returns the policy ID on success.
 pub fn upload(
     policy: Policy,
     signing_key: Option<&SigningKey>,
@@ -80,5 +80,5 @@ pub fn upload(
     .map_err(|e| anyhow::anyhow!("Failed to create policy: {}", e))?;
 
     crate::output::maybe_show_deprecation(&result, global.verbose);
-    Ok(result.data.policy_key)
+    Ok(result.data.policy_id)
 }

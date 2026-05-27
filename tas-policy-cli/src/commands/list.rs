@@ -58,7 +58,7 @@ pub fn execute(args: ListArgs, global: &GlobalOpts) -> anyhow::Result<()> {
         // Fetch the full policy for each summary.
         let mut policies = Vec::new();
         for summary in &summaries {
-            let policy_resp = client.get_policy(&summary.policy_key)?;
+            let policy_resp = client.get_policy(&summary.policy_id)?;
             policies.push(policy_resp.data);
         }
         output::print_value(&policies, &global.output_format);
@@ -75,7 +75,7 @@ pub fn execute(args: ListArgs, global: &GlobalOpts) -> anyhow::Result<()> {
                 );
                 for s in &summaries {
                     let cvm = s.cvm_type().map_or("???".into(), |c| c.to_string());
-                    println!("  {} [{}]", s.policy_key, cvm);
+                    println!("  {} [{}]", s.policy_id, cvm);
                     if let Some(ref name) = s.name {
                         println!("    Name:    {}", name);
                     }

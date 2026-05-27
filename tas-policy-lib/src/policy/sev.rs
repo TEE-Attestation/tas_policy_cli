@@ -31,6 +31,8 @@ impl Default for SevPlatformInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SevPolicy {
+    #[serde(default)]
+    pub policy_id: String,
     pub key_id: String,
     pub metadata: PolicyMetadata,
     pub measurement: Option<MeasurementHash>,
@@ -42,8 +44,13 @@ pub struct SevPolicy {
 }
 
 impl SevPolicy {
-    pub fn with_measurement(key_id: impl Into<String>, measurement_hex: &str) -> Result<Self> {
+    pub fn with_measurement(
+        policy_id: impl Into<String>,
+        key_id: impl Into<String>,
+        measurement_hex: &str,
+    ) -> Result<Self> {
         Ok(Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurement: Some(MeasurementHash::from_hex(measurement_hex)?),
@@ -55,8 +62,13 @@ impl SevPolicy {
         })
     }
 
-    pub fn svn_only(key_id: impl Into<String>, tcb: SevTcbConfig) -> Self {
+    pub fn svn_only(
+        policy_id: impl Into<String>,
+        key_id: impl Into<String>,
+        tcb: SevTcbConfig,
+    ) -> Self {
         Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurement: None,
@@ -68,8 +80,13 @@ impl SevPolicy {
         }
     }
 
-    pub fn production(key_id: impl Into<String>, measurement_hex: &str) -> Result<Self> {
+    pub fn production(
+        policy_id: impl Into<String>,
+        key_id: impl Into<String>,
+        measurement_hex: &str,
+    ) -> Result<Self> {
         Ok(Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurement: Some(MeasurementHash::from_hex(measurement_hex)?),
@@ -117,6 +134,7 @@ impl SevPolicy {
             smt_enabled: config.smt_enabled.unwrap_or(true),
         });
         Ok(Self {
+            policy_id: config.policy_id,
             key_id: config.key_id,
             metadata: PolicyMetadata {
                 name: config.name,
@@ -132,8 +150,8 @@ impl SevPolicy {
         })
     }
 
-    pub fn builder(key_id: impl Into<String>) -> SevPolicyBuilder {
-        SevPolicyBuilder::new(key_id)
+    pub fn builder(policy_id: impl Into<String>, key_id: impl Into<String>) -> SevPolicyBuilder {
+        SevPolicyBuilder::new(policy_id, key_id)
     }
 
     /// Merge overrides into this policy, replacing only the fields that are `Some`.
@@ -237,6 +255,8 @@ impl SevPolicy {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SevConfig {
+    #[serde(default)]
+    pub policy_id: String,
     pub key_id: String,
     #[serde(default)]
     pub name: String,
@@ -366,6 +386,7 @@ pub struct SevSecurityFlags {
 }
 
 pub struct SevPolicyBuilder {
+    policy_id: String,
     key_id: String,
     metadata: PolicyMetadata,
     measurement: Option<MeasurementHash>,
@@ -378,8 +399,9 @@ pub struct SevPolicyBuilder {
 }
 
 impl SevPolicyBuilder {
-    pub fn new(key_id: impl Into<String>) -> Self {
+    pub fn new(policy_id: impl Into<String>, key_id: impl Into<String>) -> Self {
         Self {
+            policy_id: policy_id.into(),
             key_id: key_id.into(),
             metadata: PolicyMetadata::default(),
             measurement: None,
@@ -445,6 +467,7 @@ impl SevPolicyBuilder {
             ));
         }
         Ok(SevPolicy {
+            policy_id: self.policy_id,
             key_id: self.key_id,
             metadata: self.metadata,
             measurement: self.measurement,
@@ -592,6 +615,7 @@ mod tests {
     fn test_bad_config_no_measurement_no_tcb() {
         // A policy with no measurement AND no TCB should fail validation
         let policy = SevPolicy {
+            policy_id: "test-policy".into(),
             key_id: "some-key".into(),
             metadata: PolicyMetadata::default(),
             measurement: None,
@@ -667,6 +691,7 @@ mod tests {
         // VMPL > 3 should be caught by validation
         let m = "a".repeat(96);
         let policy = SevPolicy {
+            policy_id: "test-policy".into(),
             key_id: "test-key".into(),
             metadata: PolicyMetadata::default(),
             measurement: Some(MeasurementHash::from_hex(&m).unwrap()),
@@ -747,7 +772,7 @@ mod tests {
     #[test]
     fn production_policy_omits_smt_allowed() {
         let measurement = "a".repeat(96);
-        let policy = SevPolicy::production("key1", &measurement).expect("production");
+        let policy = SevPolicy::production("pol1", "key1", &measurement).expect("production");
         let flags = policy.policy_flags.expect("should have policy_flags");
         assert!(
             flags.smt_allowed.is_none(),
@@ -809,7 +834,7 @@ mod tests {
 
     #[test]
     fn builder_without_smt_allowed() {
-        let policy = SevPolicy::builder("key1")
+        let policy = SevPolicy::builder("pol1", "key1")
             .svn_only()
             .build()
             .expect("build");
@@ -818,7 +843,7 @@ mod tests {
 
     #[test]
     fn builder_sets_smt_allowed() {
-        let policy = SevPolicy::builder("key1")
+        let policy = SevPolicy::builder("pol1", "key1")
             .svn_only()
             .smt_allowed(false)
             .build()
@@ -834,7 +859,7 @@ mod tests {
     #[test]
     fn merge_applies_smt_allowed_override() {
         let measurement = "a".repeat(96);
-        let mut policy = SevPolicy::production("key1", &measurement).expect("production");
+        let mut policy = SevPolicy::production("pol1", "key1", &measurement).expect("production");
         assert!(policy.policy_flags.as_ref().unwrap().smt_allowed.is_none());
 
         let overrides = SevOverrides {
@@ -852,7 +877,7 @@ mod tests {
     #[test]
     fn merge_without_smt_override_preserves_none() {
         let measurement = "a".repeat(96);
-        let mut policy = SevPolicy::production("key1", &measurement).expect("production");
+        let mut policy = SevPolicy::production("pol1", "key1", &measurement).expect("production");
         assert!(policy.policy_flags.as_ref().unwrap().smt_allowed.is_none());
 
         let overrides = SevOverrides {

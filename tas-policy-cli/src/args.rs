@@ -57,7 +57,11 @@ pub struct CreateArgs {
     // =========================================================================
     // Common (required for both TDX and SEV)
     // =========================================================================
-    /// Unique key identifier for this policy.
+    /// Unique policy identifier (used as Redis key: policy:{policy_id}).
+    #[arg(long)]
+    pub policy_id: String,
+
+    /// Unique key identifier for the KMS secret to release.
     #[arg(long)]
     pub key_id: String,
 
@@ -452,13 +456,13 @@ pub struct PolicyOverrides {
 
 /// Arguments for the `update` command.
 ///
-/// Fetches the existing policy identified by `--policy-key`, merges
+/// Fetches the existing policy identified by `--policy-id`, merges
 /// any user-supplied overrides, then uploads the updated policy.
 #[derive(Args, Debug)]
 pub struct UpdateArgs {
-    /// The key identifying the policy to update.
+    /// The policy ID identifying the policy to update.
     #[arg(long)]
-    pub policy_key: String,
+    pub policy_id: String,
 
     /// Path to signing key (PEM format). Required unless --unsigned is specified.
     #[arg(

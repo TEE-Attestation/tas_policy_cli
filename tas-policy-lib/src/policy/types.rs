@@ -61,6 +61,13 @@ impl Policy {
             Policy::Sev(p) => &p.key_id,
         }
     }
+
+    pub fn policy_id(&self) -> &str {
+        match self {
+            Policy::Tdx(p) => &p.policy_id,
+            Policy::Sev(p) => &p.policy_id,
+        }
+    }
 }
 
 impl From<TdxPolicy> for Policy {
@@ -80,6 +87,8 @@ impl From<SevPolicy> for Policy {
 pub struct PolicyMetadata {
     #[serde(default)]
     pub policy_type: String,
+    #[serde(default)]
+    pub policy_id: String,
     #[serde(default)]
     pub key_id: String,
     #[serde(default)]

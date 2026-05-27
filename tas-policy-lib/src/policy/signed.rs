@@ -290,6 +290,7 @@ impl SignedPolicyEnvelope {
         Self {
             metadata: PolicyMetadata {
                 policy_type: "TDX".to_string(),
+                policy_id: policy.policy_id.clone(),
                 key_id: policy.key_id.clone(),
                 ..policy.metadata.clone()
             },
@@ -323,6 +324,7 @@ impl SignedPolicyEnvelope {
         Self {
             metadata: PolicyMetadata {
                 policy_type: "SEV".to_string(),
+                policy_id: policy.policy_id.clone(),
                 key_id: policy.key_id.clone(),
                 ..policy.metadata.clone()
             },
@@ -376,6 +378,7 @@ impl SignedPolicyEnvelope {
     /// a policy from the TAS server (which returns the envelope format).
     pub fn to_policy(&self) -> Result<super::types::Policy> {
         let key_id = self.metadata.key_id.clone();
+        let policy_id = self.metadata.policy_id.clone();
         match &self.validation_rules {
             ValidationRules::Tdx(tdx_rules) => {
                 // Convert TdxBodyRules -> TdxMeasurements
@@ -415,6 +418,7 @@ impl SignedPolicyEnvelope {
                 });
 
                 Ok(super::types::Policy::Tdx(Box::new(TdxPolicy {
+                    policy_id,
                     key_id,
                     metadata: self.metadata.clone(),
                     measurements,
@@ -450,6 +454,7 @@ impl SignedPolicyEnvelope {
                     });
 
                 Ok(super::types::Policy::Sev(Box::new(SevPolicy {
+                    policy_id,
                     key_id,
                     metadata: self.metadata.clone(),
                     measurement,

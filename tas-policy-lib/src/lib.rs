@@ -23,16 +23,16 @@
 //!
 //! # fn main() -> Result<(), tas_policy_lib::Error> {
 //! // TDX: TCB-only policy (no measurements) - using default TCB settings
-//! let policy = TdxPolicy::tcb_only("my-key", TcbConfig::all_up_to_date());
+//! let policy = TdxPolicy::tcb_only("my-policy", "my-key", TcbConfig::all_up_to_date());
 //!
 //! // TDX: With MRTD measurement (uses default TCB: all UpToDate, standard update)
-//! let policy = TdxPolicy::with_mrtd("my-key", "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c700000000")?;
+//! let policy = TdxPolicy::with_mrtd("my-policy", "my-key", "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c700000000")?;
 //!
 //! // SEV: With measurement
-//! let policy = SevPolicy::with_measurement("my-key", "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2000000000000")?;
+//! let policy = SevPolicy::with_measurement("my-policy", "my-key", "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2000000000000")?;
 //!
 //! // SEV: SVN-only (no measurement, all TCB_VERSION fields required)
-//! let policy = SevPolicy::svn_only("my-key", SevTcbConfig::for_genoa(
+//! let policy = SevPolicy::svn_only("my-policy", "my-key", SevTcbConfig::for_genoa(
 //!     4,    // boot_loader_svn
 //!     0,    // tee_svn
 //!     20,   // snp_svn
@@ -40,7 +40,7 @@
 //! ));
 //!
 //! // SEV: Turin processor (requires additional fields)
-//! let policy = SevPolicy::svn_only("my-key", SevTcbConfig::for_turin(4, 0, 25, 215)
+//! let policy = SevPolicy::svn_only("my-policy", "my-key", SevTcbConfig::for_turin(4, 0, 25, 215)
 //!     .min_ucode_svn(10)
 //!     .min_snp_iface_ver(2));
 //! # Ok(())
@@ -53,7 +53,7 @@
 //!
 //! # fn main() -> Result<(), tas_policy_lib::Error> {
 //! // Complex TDX policy with multiple measurements and custom TCB
-//! let policy = TdxPolicy::builder("my-key")
+//! let policy = TdxPolicy::builder("my-policy", "my-key")
 //!     .mrtd("b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c700000000")?
 //!     .rtmr0("112233445566778899001122334455667788990011223344556677889900112233445566778899001122334400000000")?
 //!     .rtmr1("aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00112233445500000000")?
@@ -78,11 +78,11 @@
 //!         .api_key_file("/run/secrets/api_key")
 //!         .build()?;
 //!     
-//!     let policy = TdxPolicy::with_mrtd("vm-123-key", "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c700000000")?;
+//!     let policy = TdxPolicy::with_mrtd("vm-123-policy", "vm-123-key", "b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c700000000")?;
 //!     let key = SigningKey::from_file("/etc/tas/key.pem", None)?;
 //!     
 //!     let result = client.create_policy(policy, Some(&key))?;
-//!     println!("Created: {}", result.data.policy_key);
+//!     println!("Created: {}", result.data.policy_id);
 //!     Ok(())
 //! }
 //! ```

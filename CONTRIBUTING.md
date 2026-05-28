@@ -6,7 +6,7 @@ Thank you for your interest in contributing! Please follow the guidelines below 
 
 ## How to Contribute
 
-All contributions are accepted via **pull requests** on GitHub. Please submit your pull requests to this repository: [https://github.com/TEE-Attestation/tas-policy-cli](https://github.com/TEE-Attestation/tas-policy-cli).
+All contributions are accepted via **pull requests** on GitHub. Please submit your pull requests to this repository: [https://github.com/TEE-Attestation/tas_policy_cli](https://github.com/TEE-Attestation/tas_policy_cli).
 
 By contributing, you agree that all code submissions fall under the terms of the **MIT License** (see the [LICENSE](./LICENSE.md) file). Additionally, all commits must be **signed off**.
 

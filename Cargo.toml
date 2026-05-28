@@ -1,5 +1,5 @@
 [workspace]
-members = ["tas-policy-lib", "tas-policy-cli"]
+members = ["tas_policy_lib", "tas_policy_cli"]
 resolver = "2"
 
 [workspace.package]
@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-repository = "https://github.com/example/tas-policy"
+repository = "https://github.com/TEE-Attestation/tas_policy_cli"
 
 [workspace.dependencies]
 # Shared dependencies with versions pinned at workspace level

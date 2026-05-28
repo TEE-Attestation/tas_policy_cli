@@ -1,4 +1,4 @@
-# tas-policy-cli
+# tas_policy_cli
 
 A command-line tool for managing attestation policies on a
 [TEE Attestation Service (TAS)](https://github.com/TEE-Attestation/tas) server.
@@ -26,8 +26,8 @@ terminal.
 
 ```bash
 # Clone and build from source
-git clone https://github.com/TEE-Attestation/tas-policy-cli
-cd tas-policy-cli
+git clone https://github.com/TEE-Attestation/tas_policy_cli
+cd tas_policy_cli
 cargo build --release
 
 # The binary is at target/release/tas-policy

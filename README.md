@@ -13,14 +13,33 @@ terminal.
 
 ## Contents
 
-- [Installation](#installation)
-- [Signing key setup](#signing-key-setup)
-- [Quick start](#quick-start)
-- [Global options](#global-options)
-- [Commands](#commands) — [create](#create--create-a-new-policy) · [list](#list--list-policies) · [get](#get--get-a-single-policy) · [update](#update--update-an-existing-policy) · [delete](#delete--delete-a-policy) · [healthcheck](#healthcheck--diagnose-connectivity) · [certify](#certify--manage-domain-policies--certify-policies)
-- [Policy examples](#policy-examples) — [Intel TDX](#intel-tdx--default-tcb-only-policy) · [AMD SEV-SNP](#amd-sev-snp--default-genoa-policy)
-- [Verbose logging](#verbose-logging)
-- [Licence](#licence)
+- [tas\_policy\_cli](#tas_policy_cli)
+  - [Contents](#contents)
+  - [Installation](#installation)
+  - [Signing key setup](#signing-key-setup)
+    - [Generate a key pair](#generate-a-key-pair)
+    - [Register the public key with TAS](#register-the-public-key-with-tas)
+  - [Quick start](#quick-start)
+  - [Global options](#global-options)
+  - [Commands](#commands)
+    - [`create` — Create a new policy](#create--create-a-new-policy)
+      - [Common options](#common-options)
+      - [TDX-specific options](#tdx-specific-options)
+      - [SEV-specific options](#sev-specific-options)
+    - [`list` — List policies](#list--list-policies)
+    - [`get` — Get a single policy](#get--get-a-single-policy)
+    - [`update` — Update an existing policy](#update--update-an-existing-policy)
+    - [`delete` — Delete a policy](#delete--delete-a-policy)
+    - [`healthcheck` — Diagnose connectivity](#healthcheck--diagnose-connectivity)
+    - [`certify` — Manage domain-policies \& certify-policies](#certify--manage-domain-policies--certify-policies)
+      - [Certify-policies](#certify-policies)
+      - [Domain-policies](#domain-policies)
+  - [Policy examples](#policy-examples)
+    - [Intel TDX — default TCB-only policy](#intel-tdx--default-tcb-only-policy)
+    - [AMD SEV-SNP — default Genoa policy](#amd-sev-snp--default-genoa-policy)
+  - [Verbose logging](#verbose-logging)
+  - [Contributing](#contributing)
+  - [Licence](#licence)
 
 ## Installation
 
@@ -68,11 +87,11 @@ tas-policy create --signing-key signing-key.pem \
 ### Register the public key with TAS
 
 The TAS server needs the **public key** so it can verify policy signatures.
-Copy it into the server's signing keys directory:
+Copy it into the server's policy certificate directory (`certs/policy`):
 
 ```bash
-# Copy the public key to the TAS server's keys folder
-scp signing-key-pub.pem user@tas-server:/opt/tas/config/signing-keys/
+# Copy the public key to the TAS server's policy certs folder
+scp signing-key-pub.pem user@tas-server:/opt/tas/certs/policy/
 ```
 
 > The exact path depends on your TAS deployment. See the
@@ -568,8 +587,8 @@ the policy — the server will not enforce a specific launch digest or VMPL leve
 > CLI and are not queried from the TAS server at runtime. This differs from the
 > Intel TDX case, where TCB status values like `UpToDate` are evaluated
 > dynamically by the server during attestation. If AMD publishes new minimum SVN
-> levels for your processor family, you must explicitly pass the updated
-> `--min-*-svn` flags or wait for a CLI update.
+> levels for your processor family, or if your machines run lower firmware
+> revisions you can override the minimum values using `--min-boot-loader-svn`, > `--min-snp-svn`, and `--min-microcode-svn`.
 >
 > | Family | bootloader | tee | snp | microcode | ucode | snp_iface_ver |
 > |--------|-----------|-----|-----|-----------|-------|---------------|
